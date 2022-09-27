@@ -34,6 +34,16 @@ For the active project, check out its fork
 
 Run `python3 -m unittest` in the root folder
 
+## How to check test coverage
+
+Install coverage.py: `pip install coverage`
+
+To check statement coverage run `coverage run -m unittest` on the root folder. Then, to see the report run `coverage report --include=pdfminer/*,tools/*`. In case of a more detailed report add the attribute `-m`.
+
+To check the branch coverage run `coverage run --branch -m unittest` on the root folder. Then, to see the report run `coverage report --include=pdfminer/*,tools/*`
+
+To see the report in a nicer way, run `coverage html --include=pdfminer/*,tools/*` and an html file wil be created `htmlcov/index.html`.
+
 ## Command Line Syntax:
 
 ### pdf2txt.py
