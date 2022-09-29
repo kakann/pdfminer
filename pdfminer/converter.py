@@ -24,6 +24,7 @@ from .utils import bbox2str
 
 # PDFLayoutAnalyzer
 ##
+
 class PDFLayoutAnalyzer(PDFTextDevice):
 
     def __init__(self, rsrcmgr, pageno=1, laparams=None):
@@ -69,7 +70,7 @@ class PDFLayoutAnalyzer(PDFTextDevice):
                         self.cur_item.x1, self.cur_item.y1))
         self.cur_item.add(item)
         return
-
+    
     def paint_path(self, gstate, stroke, fill, evenodd, path):
         shape = ''.join(x[0] for x in path)
         if shape == 'ml':

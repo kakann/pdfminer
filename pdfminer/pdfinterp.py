@@ -32,6 +32,7 @@ from .utils import mult_matrix
 from .utils import MATRIX_IDENTITY
 
 
+
 # Exceptions
 ##
 class PDFResourceError(PDFException):
@@ -158,6 +159,7 @@ class PDFResourceManager:
                 pass
         return
 
+    
     def get_cmap(self, cmapname, strict=False):
         try:
             return CMapDB.get_cmap(cmapname)
@@ -166,6 +168,7 @@ class PDFResourceManager:
                 raise
             return CMap()
 
+    
     def get_font(self, objid, spec):
         if objid and objid in self._cached_fonts:
             font = self._cached_fonts[objid]
@@ -328,6 +331,7 @@ class PDFPageInterpreter:
 
     # init_resources(resources):
     #   Prepare the fonts and XObjects listed in the Resource attribute.
+    
     def init_resources(self, resources):
         self.resources = resources
         self.fontmap = {}

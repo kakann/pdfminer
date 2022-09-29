@@ -9,6 +9,7 @@ from pdfminer.pdfparser import PDFParser
 from pdfminer.converter import PDFConverter
 
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', metavar='input.pdf', nargs='+')
@@ -167,6 +168,7 @@ def fonts2txt(fonts):
                 - uni: list of booleans that shows if it is unicode or not
 
     '''
+    
     def process_line(name, type, encoding, unicode):
         '''
         Processes the table line to a nice distribution for the table disposal
