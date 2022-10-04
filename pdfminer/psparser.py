@@ -2,6 +2,7 @@
 import re
 import logging
 from .utils import choplist
+# from memory_profiler import profile
 
 STRICT = 0
 
@@ -165,9 +166,20 @@ class PSBaseParser:
 
     debug = 0
 
+
     def __init__(self, fp):
         self.fp = fp
         self.seek(0)
+        self.__spec_char_check_dict = {
+            b'%' : (b'%', self._parse_comment),
+            b'/' : (b'',self._parse_literal),
+            b'.' : (b'.', self._parse_float),
+            b'<' : (b'',self._parse_wopen),
+            b'>' : (b'',self._parse_wclose),
+            b'(' : (b'',self._parse_string), 
+            b'-' : (b'-', self._parse_number),
+            b'+' : (b'+', self._parse_number)
+        }
         return
 
     def __repr__(self):
@@ -275,7 +287,7 @@ class PSBaseParser:
                 s = s[:n]
                 buf = b''
         return
-
+    # @profile
     def _parse_main(self, s, i):
         m = NONSPC.search(s, i)
         if not m:
@@ -283,42 +295,28 @@ class PSBaseParser:
         j = m.start(0)
         c = s[j:j+1]
         self._curtokenpos = self.bufpos+j
-        if c == b'%':
-            self._curtoken = b'%'
-            self._parse1 = self._parse_comment
-            return j+1
-        elif c == b'/':
-            self._curtoken = b''
-            self._parse1 = self._parse_literal
-            return j+1
-        elif c in b'-+' or c.isdigit():
-            self._curtoken = c
-            self._parse1 = self._parse_number
-            return j+1
-        elif c == b'.':
-            self._curtoken = c
-            self._parse1 = self._parse_float
-            return j+1
-        elif c.isalpha():
+
+        if c.isalpha():
             self._curtoken = c
             self._parse1 = self._parse_keyword
             return j+1
-        elif c == b'(':
-            self._curtoken = b''
-            self.paren = 1
-            self._parse1 = self._parse_string
+
+        elif c.isdigit():
+            self._curtoken = c
+            self._parse1 = self._parse_number
             return j+1
-        elif c == b'<':
-            self._curtoken = b''
-            self._parse1 = self._parse_wopen
+
+        elif c in self.__spec_char_check_dict:
+            self._curtoken = self.__spec_char_check_dict[c][0]
+            self._parse1 = self.__spec_char_check_dict[c][1]
+            if c == b'(':
+                self.paren = 1
             return j+1
-        elif c == b'>':
-            self._curtoken = b''
-            self._parse1 = self._parse_wclose
-            return j+1
+
         else:
             self._add_token(KWD(c))
             return j+1
+ 
 
     def _add_token(self, obj):
         self._tokens.append((self._curtokenpos, obj))
@@ -500,7 +498,7 @@ class PSBaseParser:
             pass
         self._parse1 = self._parse_main
         return j
-
+    # @profile
     def nexttoken(self):
         while not self._tokens:
             self.fillbuf()
@@ -571,7 +569,7 @@ class PSStackParser(PSBaseParser):
 
     def do_keyword(self, pos, token):
         return
-
+    # @profile
     def nextobject(self):
         """Yields a list of objects.
 
@@ -579,54 +577,53 @@ class PSStackParser(PSBaseParser):
         Arrays and dictionaries are represented as
         Python lists and dictionaries.
         """
+        keyword_start_dict= {
+            KEYWORD_ARRAY_BEGIN: 'a',
+            KEYWORD_DICT_BEGIN : 'd',
+            KEYWORD_PROC_BEGIN : 'p'
+            
+        }
+        keyword_end_dict = {
+            KEYWORD_ARRAY_END:'a',
+            KEYWORD_DICT_END : 'd',
+            KEYWORD_PROC_END:'p'
+        }
+
         while not self.results:
             (pos, token) = self.nexttoken()
             # print((pos,token), (self.curtype, self.curstack))
             if isinstance(token, (int, float, bool, bytes, PSLiteral)):
                 # normal token
                 self.push((pos, token))
-            elif token == KEYWORD_ARRAY_BEGIN:
-                # begin array
-                self.start_type(pos, 'a')
-            elif token == KEYWORD_ARRAY_END:
-                # end array
+                
+            elif token in keyword_start_dict:
+                self.start_type(pos, keyword_start_dict[token])
+
+            elif token in keyword_end_dict:
                 try:
-                    self.push(self.end_type('a'))
+                    (pos, objs) = self.end_type(keyword_end_dict[token])
+                    
+                    if token == KEYWORD_DICT_END:
+                        if len(objs) % 2 != 0:
+                            raise PSSyntaxError(
+                                'Invalid dictionary construct: %r' % (objs,))
+                        # construct a Python dictionary.
+                        objs = dict((literal_name(k), v)
+                                for (k, v) in choplist(2, objs) if v is not None)
+
+                    self.push((pos,objs))
+
                 except PSTypeError:
                     if STRICT:
                         raise
-            elif token == KEYWORD_DICT_BEGIN:
-                # begin dictionary
-                self.start_type(pos, 'd')
-            elif token == KEYWORD_DICT_END:
-                # end dictionary
-                try:
-                    (pos, objs) = self.end_type('d')
-                    if len(objs) % 2 != 0:
-                        raise PSSyntaxError(
-                            'Invalid dictionary construct: %r' % (objs,))
-                    # construct a Python dictionary.
-                    d = dict((literal_name(k), v)
-                             for (k, v) in choplist(2, objs) if v is not None)
-                    self.push((pos, d))
-                except PSTypeError:
-                    if STRICT:
-                        raise
-            elif token == KEYWORD_PROC_BEGIN:
-                # begin proc
-                self.start_type(pos, 'p')
-            elif token == KEYWORD_PROC_END:
-                # end proc
-                try:
-                    self.push(self.end_type('p'))
-                except PSTypeError:
-                    if STRICT:
-                        raise
+
+                    
             else:
                 if self.debug:
                     logging.debug('do_keyword: pos=%r, token=%r, stack=%r' %
                                   (pos, token, self.curstack))
                 self.do_keyword(pos, token)
+
             if self.context:
                 continue
             else:
