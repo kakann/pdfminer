@@ -166,19 +166,18 @@ class PSBaseParser:
 
     debug = 0
 
-
     def __init__(self, fp):
         self.fp = fp
         self.seek(0)
         self.__spec_char_check_dict = {
-            b'%' : (b'%', self._parse_comment),
-            b'/' : (b'',self._parse_literal),
-            b'.' : (b'.', self._parse_float),
-            b'<' : (b'',self._parse_wopen),
-            b'>' : (b'',self._parse_wclose),
-            b'(' : (b'',self._parse_string), 
-            b'-' : (b'-', self._parse_number),
-            b'+' : (b'+', self._parse_number)
+            b'%': (b'%', self._parse_comment),
+            b'/': (b'', self._parse_literal),
+            b'.': (b'.', self._parse_float),
+            b'<': (b'', self._parse_wopen),
+            b'>': (b'', self._parse_wclose),
+            b'(': (b'', self._parse_string),
+            b'-': (b'-', self._parse_number),
+            b'+': (b'+', self._parse_number)
         }
         return
 
@@ -288,6 +287,7 @@ class PSBaseParser:
                 buf = b''
         return
     # @profile
+
     def _parse_main(self, s, i):
         m = NONSPC.search(s, i)
         if not m:
@@ -316,7 +316,6 @@ class PSBaseParser:
         else:
             self._add_token(KWD(c))
             return j+1
- 
 
     def _add_token(self, obj):
         self._tokens.append((self._curtokenpos, obj))
@@ -499,6 +498,7 @@ class PSBaseParser:
         self._parse1 = self._parse_main
         return j
     # @profile
+
     def nexttoken(self):
         while not self._tokens:
             self.fillbuf()
@@ -570,6 +570,7 @@ class PSStackParser(PSBaseParser):
     def do_keyword(self, pos, token):
         return
     # @profile
+
     def nextobject(self):
         """Yields a list of objects.
 
@@ -577,16 +578,16 @@ class PSStackParser(PSBaseParser):
         Arrays and dictionaries are represented as
         Python lists and dictionaries.
         """
-        keyword_start_dict= {
+        keyword_start_dict = {
             KEYWORD_ARRAY_BEGIN: 'a',
-            KEYWORD_DICT_BEGIN : 'd',
-            KEYWORD_PROC_BEGIN : 'p'
-            
+            KEYWORD_DICT_BEGIN: 'd',
+            KEYWORD_PROC_BEGIN: 'p'
+
         }
         keyword_end_dict = {
-            KEYWORD_ARRAY_END:'a',
-            KEYWORD_DICT_END : 'd',
-            KEYWORD_PROC_END:'p'
+            KEYWORD_ARRAY_END: 'a',
+            KEYWORD_DICT_END: 'd',
+            KEYWORD_PROC_END: 'p'
         }
 
         while not self.results:
@@ -595,29 +596,28 @@ class PSStackParser(PSBaseParser):
             if isinstance(token, (int, float, bool, bytes, PSLiteral)):
                 # normal token
                 self.push((pos, token))
-                
+
             elif token in keyword_start_dict:
                 self.start_type(pos, keyword_start_dict[token])
 
             elif token in keyword_end_dict:
                 try:
                     (pos, objs) = self.end_type(keyword_end_dict[token])
-                    
+
                     if token == KEYWORD_DICT_END:
                         if len(objs) % 2 != 0:
                             raise PSSyntaxError(
                                 'Invalid dictionary construct: %r' % (objs,))
                         # construct a Python dictionary.
                         objs = dict((literal_name(k), v)
-                                for (k, v) in choplist(2, objs) if v is not None)
+                                    for (k, v) in choplist(2, objs) if v is not None)
 
-                    self.push((pos,objs))
+                    self.push((pos, objs))
 
                 except PSTypeError:
                     if STRICT:
                         raise
 
-                    
             else:
                 if self.debug:
                     logging.debug('do_keyword: pos=%r, token=%r, stack=%r' %
