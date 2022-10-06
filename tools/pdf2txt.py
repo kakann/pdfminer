@@ -30,7 +30,7 @@ def create_file(debug: int,
                 password: str,
                 rotation: int,
                 encoding: str,
-                input_file: List[str],
+                input_files: List[str],
                 outtype: str, ) -> bool:
     """
     Parses through a pdf file and creates a either a xml, html,
@@ -124,7 +124,7 @@ def create_chapters(debug: int,
                     password: str,
                     rotation: int,
                     encoding: str,
-                    input_file: List[str],
+                    input_files: List[str],
                     outtype: str,
                     chapter_definition: str) -> bool:
     """
