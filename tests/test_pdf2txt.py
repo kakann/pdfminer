@@ -47,6 +47,27 @@ class TestPdf2Txt(unittest.TestCase):
             tests, ['pdf2txt.py', '-t', 'html', 'samples/simple1.pdf']
         )
 
+    def test_chapters_text_file(self):
+
+        # Check if the files are created and then removes them in the end
+        def tests(fake_stdout):
+            path = 'samples/Crime_and_Punishment_T_short_chapters/'
+            self.assertTrue(os.path.exists(path))
+            self.assertTrue(os.path.isfile(path + 'preface.txt'))
+
+            # Cleaning up the files after creating them
+            shutil.rmtree(path)
+
+        self.run_tests(
+            tests,
+            [
+                'pdf2txt.py',
+                '-ch',
+                'chapter',
+                'samples/Crime_and_Punishment_T_short.pdf'
+            ]
+        )
+
     def test_equations_html_output(self):
         def tests(fake_stdout):
             # Assert that there are two lines between the equations
