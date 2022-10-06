@@ -1,18 +1,24 @@
 #!/usr/bin/env python
-import sys
 import argparse
-from pdfminer.pdfdocument import PDFDocument
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.pdfdevice import TagExtractor
-from pdfminer.pdfpage import PDFPage
-from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter
+import os
+import sys
+
 from pdfminer.cmapdb import CMapDB
-from pdfminer.layout import LAParams
+from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter
 from pdfminer.image import ImageWriter
+from pdfminer.layout import LAParams
+from pdfminer.pdfdevice import TagExtractor
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFParser
 
 
 def main():
+    """
+    Converts pdf files into either txt, html or xml file.
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument('input', metavar='input.pdf', nargs='+')
     parser.add_argument('-P', '--password')
@@ -37,6 +43,7 @@ def main():
     parser.add_argument('-W', '--word-margin')
     parser.add_argument('-F', '--boxes-flow')
     parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-ch', '--chapterize')
     args = parser.parse_args()
 
     # debug option
@@ -55,48 +62,58 @@ def main():
     encoding = 'utf-8'
     scale = 1
     caching = True
+    chapters = False
+    chapter_definition = None
 
     laparams = LAParams()
     if args.debug:
         debug += 1
-    elif args.password:
+    if args.password:
         password = args.password.encode('ascii')
-    elif args.output:
+    if args.output:
         outfile = args.output
-    elif args.text_type:
+    if args.text_type:
         outtype = args.text_type
-    elif args.output_dir:
+    if args.output_dir:
         imagewriter = ImageWriter(args['output-dir'])
-    elif args.encoding:
+    if args.encoding:
         encoding = args.encoding
-    elif args.scale:
+    if args.scale:
         scale = float(args.scale)
-    elif args.rotation:
+    if args.rotation:
         rotation = int(args.rotation)
-    elif args.layout_mode:
+    if args.layout_mode:
         layoutmode = args.layout_mode
-    elif args.pagenos:
-        pagenos.update(int(x)-1 for x in args.pagenos.split(','))
-    elif args.maxpages:
+    if args.pagenos:
+        pagenos.update(int(x) - 1 for x in args.pagenos.split(','))
+    if args.maxpages:
         maxpages = int(args.maxpages)
-    elif args.strip_control:
+    if args.strip_control:
         stripcontrol = True
-    elif args.disable_caching:
+    if args.disable_caching:
         caching = False
-    elif args.no_layout:
+    if args.no_layout:
         laparams = None
-    elif args.all_texts:
+    if args.all_texts:
         laparams.all_texts = True
-    elif args.detect_vertical:
+    if args.detect_vertical:
         laparams.detect_vertical = True
-    elif args.char_margin:
+    if args.char_margin:
         laparams.char_margin = float(args.char_margin)
-    elif args.word_margin:
+    if args.word_margin:
         laparams.word_margin = float(args.word_margin)
-    elif args.line_margin:
+    if args.line_margin:
         laparams.line_margin = float(args.line_margin)
-    elif args.boxes_flow:
+    if args.boxes_flow:
         laparams.boxes_flow = float(args.boxes_flow)
+    if args.chapterize:
+        chapter_definition = args.chapterize
+        chapters = True
+        # If output flag is not used then we create one to
+        # parse through and create chapter file
+        if not args.output:
+            outfile = 'chapters'
+
     #
     PDFDocument.debug = debug
     PDFParser.debug = debug
@@ -132,17 +149,60 @@ def main():
         device = TagExtractor(rsrcmgr, outfp)
 
     for fname in args.input:
+        input_file_name = fname.split('/')[-1]
+        # Get the input file name to create a directory with all the chapters
+        input_file_name = input_file_name.replace('.pdf', '')
         with open(fname, 'rb') as fp:
             interpreter = PDFPageInterpreter(rsrcmgr, device)
             for page in PDFPage.get_pages(
-                fp, pagenos, maxpages=maxpages, password=password,
-                caching=caching, check_extractable=True
+                    fp, pagenos, maxpages=maxpages, password=password,
+                    caching=caching, check_extractable=True
             ):
-                page.rotate = (page.rotate+rotation) % 360
+                page.rotate = (page.rotate + rotation) % 360
                 interpreter.process_page(page)
     device.close()
+
+    # Flag if we need to create separate file for each chapter or not
+    # Creates folder for the chapters at the input file location.
+    # It reads from the output file created by PDFPageInterpreter to
+    # create separate txt for each chapter.
+    if chapters:
+
+        input_file_path = os.fspath(fname).replace('.pdf', '_chapters')
+        os.makedirs(input_file_path, exist_ok=True)
+
+        with open(outfile, 'r') as fp:
+
+            chapters_name = 'preface' + '.txt'
+            file = open(os.path.join(input_file_path, chapters_name), 'w')
+            while True:
+                cur_line = fp.readline()
+
+                line = cur_line.split(' ')
+                # To avoid making a new file when a chapter title
+                # is mentioned in the text, we check that
+                # the length of chapter is 3. ex.
+                # If chapter title is "Chapter 3" == ['Chapter', '3', '\n']
+                if len(line) == 3 and \
+                        line[0].lower() == chapter_definition.lower():
+                    file.close()
+                    chapters_name = line[0] + line[1] + '.txt'
+                    file = \
+                        open(os.path.join(input_file_path, chapters_name), 'w')
+
+                file.write(cur_line)
+                if cur_line == '':
+                    file.close()
+                    print('Files were created successfully in ' +
+                          str(os.path.join(input_file_path)))
+                    break
+
     if outfile:
         outfp.close()
+    # Deletes the file as it is only created to be parse through and create
+    # different chapter file
+    if not args.output and outfile is not None and os.path.isfile(outfile):
+        os.remove(outfile)
 
 
 if __name__ == '__main__':
