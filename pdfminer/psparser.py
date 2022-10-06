@@ -170,11 +170,13 @@ class PSBaseParser:
         self.seek(0)
         """
         ...
-        -this dict used to store the special characters and their corresponding parsing functions
-        -special characters are stored as the key 
+        -this dict used to store the special characters and
+            their corresponding parsing functions
+        -special characters are stored as the key
         -the parsing functions are stored as the value
         -special characters are stored as bytes literals
-        -parsing functions are stored as methods of the class and called when the special character is encountered
+        -parsing functions are stored as methods of the class and
+            called when the special character is encountered
         """
         self.__spec_char_check_dict = {
             b'%': (b'%', self._parse_comment),
@@ -613,7 +615,9 @@ class PSStackParser(PSBaseParser):
                                 'Invalid dictionary construct: %r' % (objs,))
                         # construct a Python dictionary.
                         objs = dict((literal_name(k), v)
-                                    for (k, v) in choplist(2, objs) if v is not None)
+                                    for (k, v) in choplist(2, objs)
+                                    if v is not None
+                                    )
 
                     self.push((pos, objs))
 
