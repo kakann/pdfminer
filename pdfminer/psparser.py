@@ -2,7 +2,6 @@
 import re
 import logging
 from .utils import choplist
-# from memory_profiler import profile
 
 STRICT = 0
 
@@ -169,6 +168,14 @@ class PSBaseParser:
     def __init__(self, fp):
         self.fp = fp
         self.seek(0)
+        """
+        ...
+        -this dict used to store the special characters and their corresponding parsing functions
+        -special characters are stored as the key 
+        -the parsing functions are stored as the value
+        -special characters are stored as bytes literals
+        -parsing functions are stored as methods of the class and called when the special character is encountered
+        """
         self.__spec_char_check_dict = {
             b'%': (b'%', self._parse_comment),
             b'/': (b'', self._parse_literal),
@@ -286,7 +293,6 @@ class PSBaseParser:
                 s = s[:n]
                 buf = b''
         return
-    # @profile
 
     def _parse_main(self, s, i):
         m = NONSPC.search(s, i)
@@ -497,7 +503,6 @@ class PSBaseParser:
             pass
         self._parse1 = self._parse_main
         return j
-    # @profile
 
     def nexttoken(self):
         while not self._tokens:
@@ -569,7 +574,6 @@ class PSStackParser(PSBaseParser):
 
     def do_keyword(self, pos, token):
         return
-    # @profile
 
     def nextobject(self):
         """Yields a list of objects.
@@ -582,7 +586,6 @@ class PSStackParser(PSBaseParser):
             KEYWORD_ARRAY_BEGIN: 'a',
             KEYWORD_DICT_BEGIN: 'd',
             KEYWORD_PROC_BEGIN: 'p'
-
         }
         keyword_end_dict = {
             KEYWORD_ARRAY_END: 'a',
