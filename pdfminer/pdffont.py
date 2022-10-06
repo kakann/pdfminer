@@ -472,8 +472,10 @@ LITERAL_TYPE1C = LIT('Type1C')
 # PDFFont
 class PDFFont:
 
-    def __init__(self, descriptor, widths, default_width=None,
-                 encoding_name=LITERAL_STANDARD_ENCODING, toUnicode=False):
+    def __init__(
+        self, descriptor, widths, default_width=None,
+        encoding_name=LITERAL_STANDARD_ENCODING, toUnicode=False
+    ):
         self.descriptor = descriptor
         self.widths = widths
         self.fontname = resolve1(descriptor.get('FontName', 'unknown'))
