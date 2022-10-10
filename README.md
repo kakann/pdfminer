@@ -38,6 +38,35 @@ For the active project, check out its fork
 
 Run `python3 -m unittest` in the root folder
 
+## How to check test coverage
+
+Install coverage.py: `pip install coverage`
+
+To check statement coverage run `coverage run -m unittest` on the root folder. Then, to see the report run `coverage report --include=pdfminer/*,tools/*`. In case of a more detailed report add the attribute `-m`.
+
+To check the branch coverage run `coverage run --branch -m unittest` on the root folder. Then, to see the report run `coverage report --include=pdfminer/*,tools/*`
+
+To see the report in a nicer way, run `coverage html --include=pdfminer/*,tools/*` and an html file wil be created `htmlcov/index.html`.
+
+## How to run the profilers
+
+For the CPU profiler: `python -m cProfile -o output.prof -s tottime -m module args`
+
+> where `output.prof` is the file in which the profiler output is stored 
+> where `module` is the pdfminer module or .py file is going to be profiled and `args` are the arguments for that code.
+
+After running the profiler, the `output.prof` generated can be visualized with SnakeViz.
+So, first install it ( `pip install snakeviz` ) and then run it like this: `snakeviz output.prof` 
+
+For the memory profiler:
+
+Install the profiler: `pip install memory_profiler`
+
+To the profiled piece of code add the `@profile` annotation before the method. (Notice `from memory_profiler import profile` is needed).
+
+After adding the neccesary annotations, run the profiler: `python -m memory_profiler module args`
+> where `module` is the pdfminer module or .py file is going to be profiled and `args` are the arguments for that code.
+
 ## Command Line Syntax:
 
 ### pdf2txt.py

@@ -167,6 +167,7 @@ def fonts2txt(fonts):
                 - uni: list of booleans that shows if it is unicode or not
 
     '''
+
     def process_line(name, type, encoding, unicode):
         '''
         Processes the table line to a nice distribution for the table disposal

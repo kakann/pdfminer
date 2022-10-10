@@ -328,6 +328,7 @@ class PDFPageInterpreter:
 
     # init_resources(resources):
     #   Prepare the fonts and XObjects listed in the Resource attribute.
+
     def init_resources(self, resources):
         self.resources = resources
         self.fontmap = {}
