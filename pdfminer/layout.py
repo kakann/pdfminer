@@ -188,7 +188,7 @@ class LTRect(LTCurve):
     def __init__(self, linewidth, bbox):
         (x0, y0, x1, y1) = bbox
         LTCurve.__init__(self, linewidth, [
-                         (x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+            (x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         return
 
 

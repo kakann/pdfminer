@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+from typing import Set, List
 
 from pdfminer.cmapdb import CMapDB
 from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter
@@ -14,7 +15,185 @@ from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfparser import PDFParser
 
 
-def main():
+def create_file(
+                input_files: List[str],
+                outtype: str,
+                debug: int = 0,
+                caching: bool = False,
+                outfile: str = None,
+                laparams: LAParams = LAParams(),
+                imagewriter: ImageWriter = None,
+                stripcontrol: bool = False,
+                scale: int = 1,
+                layoutmode: str = 'normal',
+                pagenos: Set[int] = set(),
+                maxpages: int = 0,
+                password: str = b'',
+                rotation: int = 0,
+                encoding: str = 'utf-8',
+                ) -> bool:
+    """
+    Parses through a pdf file and creates a either a xml, html,
+    tag or txt file.
+    The output can also be shown in the command line instead of
+    creating a file.
+    :param
+        input_file: Pdf file to parse through
+        outtype: A string defines witch type of the file to create.
+        debug: A integer representing either to turn debug output or not.
+        caching: A boolean representing if is catching or not the file.
+        outfile: The name of outfile to create and write the parsed pdf file.
+        laparams: Laparam instance stores information regarding the pdf pages.
+        imageWriter: An object that has information about pictures.
+        stripcontrol: A boolean representing if strip or not the characters.
+        scale: either to scale the output or not
+        layoutmode: layoutmode of the output
+        pagenos: Processes certain pages only.
+        maxpages: Limits the number of maximum pages to process.
+        password: PDF password.
+        rotation: Rotates the page in degree.
+        encoding: Output encoding. (default: utf-8)
+    """
+    PDFDocument.debug = debug
+    PDFParser.debug = debug
+    CMapDB.debug = debug
+    PDFPageInterpreter.debug = debug
+    #
+    rsrcmgr = PDFResourceManager(caching=caching)
+    if not outtype:
+        outtype = 'text'
+        if outfile:
+            if outfile.endswith('.htm') or outfile.endswith('.html'):
+                outtype = 'html'
+            elif outfile.endswith('.xml'):
+                outtype = 'xml'
+            elif outfile.endswith('.tag'):
+                outtype = 'tag'
+    if outtype:
+        if outfile:
+            outfp = open(outfile, 'w', encoding=encoding)
+        else:
+            outfp = sys.stdout
+
+        if outtype == 'text':
+            device = TextConverter(rsrcmgr, outfp, laparams=laparams,
+                                   imagewriter=imagewriter)
+        elif outtype == 'xml':
+            device = XMLConverter(rsrcmgr, outfp, laparams=laparams,
+                                  imagewriter=imagewriter,
+                                  stripcontrol=stripcontrol)
+        elif outtype == 'html':
+            device = HTMLConverter(rsrcmgr, outfp, scale=scale,
+                                   layoutmode=layoutmode, laparams=laparams,
+                                   imagewriter=imagewriter, debug=debug)
+        elif outtype == 'tag':
+            device = TagExtractor(rsrcmgr, outfp)
+
+        for fname in input_files:
+            with open(fname, 'rb') as fp:
+                interpreter = PDFPageInterpreter(rsrcmgr, device)
+                for page in PDFPage.get_pages(
+                        fp, pagenos, maxpages=maxpages, password=password,
+                        caching=caching, check_extractable=True
+                ):
+                    page.rotate = (page.rotate + rotation) % 360
+                    interpreter.process_page(page)
+        device.close()
+
+        if outfile:
+            outfp.close()
+
+        return True
+
+
+def create_chapters(input_files: List[str],
+                    chapter_definition: str,
+                    outtype: str = 'text',
+                    debug: int = 0,
+                    caching: bool = False,
+                    outfile: str = 'chapters',
+                    laparams: LAParams = LAParams(),
+                    imagewriter: ImageWriter = None,
+                    stripcontrol: bool = False,
+                    scale: int = 1,
+                    layoutmode: str = 'normal',
+                    pagenos: Set[int] = set(),
+                    maxpages: int = 0,
+                    password: str = b'',
+                    rotation: int = 0,
+                    encoding: str = 'utf-8',
+                    ) -> bool:
+    """
+    Creates a separate text file for each chapter in a book.
+    :param
+        input_file: Pdf file to parse through
+        chapter_definition: Keyword to define the chapter definitions
+                            in the book.
+        outtype: A string defines witch type of the file to create.
+        debug: A integer representing either to turn debug output or not.
+        caching: A boolean representing if is catching or not the file.
+        outfile: The name of outfile to create and write the parsed pdf file.
+        laparams: Laparam instance stores information regarding the pdf pages.
+        imageWriter: An object that has information about pictures.
+        stripcontrol: A boolean representing if strip or not the characters.
+        scale: either to scale the output or not
+        layoutmode: layoutmode of the output
+        pagenos: Processes certain pages only.
+        maxpages: Limits the number of maximum pages to process.
+        password: PDF password.
+        rotation: Rotates the page in degree.
+        encoding: Output encoding. (default: utf-8)
+    """
+
+    # Creates a large text which then create_chapter iterates over
+    create_file(input_files, outtype, debug, caching, outfile, laparams,
+                imagewriter, stripcontrol, scale, layoutmode, pagenos,
+                maxpages, password, rotation, encoding)
+
+    for fname in input_files:
+        input_file_name = fname.split('/')[-1]
+        # Get the input file name to create a directory with all the chapters
+        input_file_name = input_file_name.replace('.pdf', '')
+
+    input_file_path = os.fspath(fname).replace('.pdf', '_chapters')
+    os.makedirs(input_file_path, exist_ok=True)
+
+    with open(outfile, 'r') as fp:
+
+        chapters_name = 'preface' + '.txt'
+        file = open(os.path.join(input_file_path, chapters_name), 'w')
+
+        while 1:
+            cur_line = fp.readline()
+            line = cur_line.split(' ')
+            # To avoid making a new file when a chapter title
+            # is mentioned in the text, we check that
+            # the length of chapter is 3. ex.
+            # If chapter title is "Chapter 3" == ['Chapter', '3', '\n']
+            if len(line) == 3 and \
+                    line[0].lower() == chapter_definition.lower():
+                file.close()
+                chapters_name = line[0] + line[1] + '.txt'
+                file = \
+                    open(os.path.join(input_file_path, chapters_name), 'w')
+
+            file.write(cur_line)
+            if cur_line == '':
+                file.close()
+                outfile_path = os.path.join(outfile)
+                fp.close()
+                break
+
+    if outfile is not None and os.path.isfile(outfile_path):
+        os.remove(os.path.join(outfile))
+        print('Files were created successfully in ' + str(
+            os.path.join(input_file_path)))
+        return True
+
+    return True
+
+
+def main(raw_args=sys.argv[1:]):
     """
     Converts pdf files into either txt, html or xml file.
     """
@@ -44,7 +223,7 @@ def main():
     parser.add_argument('-F', '--boxes-flow')
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-ch', '--chapterize')
-    args = parser.parse_args()
+    args = parser.parse_args(raw_args)
 
     # debug option
     debug = 0
@@ -111,98 +290,26 @@ def main():
         chapters = True
         # If output flag is not used then we create one to
         # parse through and create chapter file
-        if not args.output:
+        if args.output is None or not args.output:
             outfile = 'chapters'
-
-    #
-    PDFDocument.debug = debug
-    PDFParser.debug = debug
-    CMapDB.debug = debug
-    PDFPageInterpreter.debug = debug
-    #
-    rsrcmgr = PDFResourceManager(caching=caching)
-    if not outtype:
-        outtype = 'text'
-        if outfile:
-            if outfile.endswith('.htm') or outfile.endswith('.html'):
-                outtype = 'html'
-            elif outfile.endswith('.xml'):
-                outtype = 'xml'
-            elif outfile.endswith('.tag'):
-                outtype = 'tag'
-    if outfile:
-        outfp = open(outfile, 'w', encoding=encoding)
-    else:
-        outfp = sys.stdout
-    if outtype == 'text':
-        device = TextConverter(rsrcmgr, outfp, laparams=laparams,
-                               imagewriter=imagewriter)
-    elif outtype == 'xml':
-        device = XMLConverter(rsrcmgr, outfp, laparams=laparams,
-                              imagewriter=imagewriter,
-                              stripcontrol=stripcontrol)
-    elif outtype == 'html':
-        device = HTMLConverter(rsrcmgr, outfp, scale=scale,
-                               layoutmode=layoutmode, laparams=laparams,
-                               imagewriter=imagewriter, debug=debug)
-    elif outtype == 'tag':
-        device = TagExtractor(rsrcmgr, outfp)
-
-    for fname in args.input:
-        input_file_name = fname.split('/')[-1]
-        # Get the input file name to create a directory with all the chapters
-        input_file_name = input_file_name.replace('.pdf', '')
-        with open(fname, 'rb') as fp:
-            interpreter = PDFPageInterpreter(rsrcmgr, device)
-            for page in PDFPage.get_pages(
-                    fp, pagenos, maxpages=maxpages, password=password,
-                    caching=caching, check_extractable=True
-            ):
-                page.rotate = (page.rotate + rotation) % 360
-                interpreter.process_page(page)
-    device.close()
 
     # Flag if we need to create separate file for each chapter or not
     # Creates folder for the chapters at the input file location.
     # It reads from the output file created by PDFPageInterpreter to
     # create separate txt for each chapter.
     if chapters:
-
-        input_file_path = os.fspath(fname).replace('.pdf', '_chapters')
-        os.makedirs(input_file_path, exist_ok=True)
-
-        with open(outfile, 'r') as fp:
-
-            chapters_name = 'preface' + '.txt'
-            file = open(os.path.join(input_file_path, chapters_name), 'w')
-            while True:
-                cur_line = fp.readline()
-
-                line = cur_line.split(' ')
-                # To avoid making a new file when a chapter title
-                # is mentioned in the text, we check that
-                # the length of chapter is 3. ex.
-                # If chapter title is "Chapter 3" == ['Chapter', '3', '\n']
-                if len(line) == 3 and \
-                        line[0].lower() == chapter_definition.lower():
-                    file.close()
-                    chapters_name = line[0] + line[1] + '.txt'
-                    file = \
-                        open(os.path.join(input_file_path, chapters_name), 'w')
-
-                file.write(cur_line)
-                if cur_line == '':
-                    file.close()
-                    print('Files were created successfully in ' +
-                          str(os.path.join(input_file_path)))
-                    break
-
-    if outfile:
-        outfp.close()
-    # Deletes the file as it is only created to be parse through and create
-    # different chapter file
-    if not args.output and outfile is not None and os.path.isfile(outfile):
-        os.remove(outfile)
+        chapter = create_chapters(args.input, chapter_definition, outtype,
+                                  debug, caching, outfile, laparams,
+                                  imagewriter,
+                                  stripcontrol, scale, layoutmode, pagenos,
+                                  maxpages, password, rotation, encoding,)
+        return chapter
+    else:
+        file = create_file(args.input, outtype, debug, caching, outfile,
+                           laparams, imagewriter, stripcontrol, scale,
+                           layoutmode, pagenos, maxpages, password,
+                           rotation, encoding)
+        return file
 
 
 if __name__ == '__main__':

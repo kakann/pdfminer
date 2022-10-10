@@ -185,6 +185,7 @@ class TextConverter(PDFConverter):
                     self.imagewriter.export_image(item)
             elif isinstance(item, LTLine):
                 self.write_text("-----\n")
+
         if self.showpageno:
             self.write_text('Page %s\n' % ltpage.pageid)
 
@@ -193,6 +194,7 @@ class TextConverter(PDFConverter):
         # their y coordinate to replicate the order of the elements.
         # The y coordinate is negated # since the origo of a pdf page starts
         # in the bottom left
+
         ltpage._objs.sort(key=lambda obj: -obj.y1)
 
         render(ltpage)
@@ -281,7 +283,6 @@ class HTMLConverter(PDFConverter):
     def place_rect(self, color, borderwidth, x, y, w, h):
         color = self.rect_colors.get(color)
         if color is not None:
-
             self.write(
                 '<span style="position:absolute; border: %s %dpx solid; '
                 'left:%dpx; top:%dpx; width:%dpx; height:%dpx;"></span>\n' %

@@ -1,11 +1,10 @@
 import contextlib
 import io
-import shutil
 import re
 import unittest
-import os
 from unittest.mock import patch
-from tools.pdf2txt import main
+from tools.pdf2txt import create_chapters
+from tools.pdf2txt import main, create_file
 
 
 class TestPdf2Txt(unittest.TestCase):
@@ -21,7 +20,7 @@ class TestPdf2Txt(unittest.TestCase):
         fake_stdout = io.StringIO()
         with contextlib.redirect_stdout(fake_stdout):
             with patch('sys.argv', args):
-                main()
+                main(args[1:])
                 func_with_tests(fake_stdout)
         fake_stdout.close()
 
@@ -45,27 +44,6 @@ class TestPdf2Txt(unittest.TestCase):
 
         self.run_tests(
             tests, ['pdf2txt.py', '-t', 'html', 'samples/simple1.pdf']
-        )
-
-    def test_chapters_text_file(self):
-
-        # Check if the files are created and then removes them in the end
-        def tests(fake_stdout):
-            path = 'samples/Crime_and_Punishment_T_short_chapters/'
-            self.assertTrue(os.path.exists(path))
-            self.assertTrue(os.path.isfile(path + 'preface.txt'))
-
-            # Cleaning up the files after creating them
-            shutil.rmtree(path)
-
-        self.run_tests(
-            tests,
-            [
-                'pdf2txt.py',
-                '-ch',
-                'chapter',
-                'samples/Crime_and_Punishment_T_short.pdf'
-            ]
         )
 
     def test_equations_html_output(self):
@@ -117,3 +95,74 @@ class TestPdf2Txt(unittest.TestCase):
         self.run_tests(
             tests, ['pdf2txt.py', 'samples/equations.pdf']
         )
+
+    @patch('tools.pdf2txt.create_file')
+    def test_create_html(self, mock_output):
+        # Test for the '.html' files
+        mock_output.return_value = True
+        outtype = 'html'
+        input_file = ['samples/simple1.pdf']
+
+        create_file_check = create_file(input_file, outtype)
+        self.assertEqual(create_file_check, True)
+
+        outfile = 'html'
+        create_file_check = create_file(input_file, outtype, outfile)
+        self.assertTrue(create_file_check)
+
+    @patch('tools.pdf2txt.create_file')
+    def test_create_xml(self, mock_output):
+        # Test for the '.xml' files
+        mock_output.return_value = True
+        outtype = 'xml'
+        input_file = ['samples/simple1.pdf']
+
+        create_file_check = create_file(input_file, outtype)
+        self.assertEqual(create_file_check, True)
+
+        outfile = 'xml'
+        create_file_check = create_file(input_file, outtype, outfile)
+        self.assertTrue(create_file_check)
+
+    @patch('tools.pdf2txt.create_file')
+    def test_create_tag(self, mock_output):
+        # Test for the '.tag' files
+        mock_output.return_value = True
+        outtype = 'tag'
+        input_file = ['samples/simple1.pdf']
+
+        create_file_check = create_file(input_file, outtype)
+        self.assertEqual(create_file_check, True)
+
+        outfile = 'tag'
+        create_file_check = create_file(input_file, outtype, outfile)
+        self.assertTrue(create_file_check)
+
+    @patch('tools.pdf2txt.create_file')
+    def test_create_text(self, mock_output):
+        # Test for the '.text' files
+        mock_output.return_value = True
+        outtype = 'text'
+
+        input_file = ['samples/simple1.pdf']
+
+        create_file_check = create_file(input_file, outtype)
+        self.assertEqual(create_file_check, True)
+
+        outfile = 'text'
+        create_file_check = create_file(input_file, outtype, outfile)
+        self.assertTrue(create_file_check)
+
+    @patch('tools.pdf2txt.create_chapters')
+    def test_create_create_chapters(self, mock_output):
+        # Test for the '.html' files
+        mock_output.return_value = True
+        chapter_definition = 'chapter'
+        input_file = ['samples/Crime_and_Punishment_T_short.pdf']
+
+        create_chapters_check = create_chapters(input_file, chapter_definition)
+        self.assertEqual(create_chapters_check, True)
+
+
+if __name__ == '__main__':
+    unittest.main()
