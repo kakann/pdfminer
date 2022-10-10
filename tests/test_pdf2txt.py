@@ -2,10 +2,7 @@ import contextlib
 import io
 import re
 import unittest
-import os
-import shutil
 from unittest.mock import patch
-from pdfminer.layout import LAParams
 from tools.pdf2txt import create_chapters
 from tools.pdf2txt import main, create_file
 
@@ -156,9 +153,6 @@ class TestPdf2Txt(unittest.TestCase):
         create_file_check = create_file(input_file, outtype, outfile)
         self.assertTrue(create_file_check)
 
-    #     self.assertTrue(
-    #         main(['-t', 'text', 'samples/Crime_and_Punishment_T_short.pdf']))
-    #
     @patch('tools.pdf2txt.create_chapters')
     def test_create_create_chapters(self, mock_output):
         # Test for the '.html' files
@@ -168,9 +162,6 @@ class TestPdf2Txt(unittest.TestCase):
 
         create_chapters_check = create_chapters(input_file, chapter_definition)
         self.assertEqual(create_chapters_check, True)
-
-    #     self.assertTrue(main(
-    #         ['-ch', 'chapters', 'samples/Crime_and_Punishment_T_short.pdf']))
 
 
 if __name__ == '__main__':

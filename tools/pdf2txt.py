@@ -146,8 +146,8 @@ def create_chapters(input_files: List[str],
     """
 
     # Creates a large text which then create_chapter iterates over
-    create_file(input_files, outtype, debug, caching, outfile, laparams, imagewriter,
-                stripcontrol, scale, layoutmode, pagenos,
+    create_file(input_files, outtype, debug, caching, outfile, laparams,
+                imagewriter, stripcontrol, scale, layoutmode, pagenos,
                 maxpages, password, rotation, encoding)
 
     for fname in input_files:
@@ -305,9 +305,10 @@ def main(raw_args=sys.argv[1:]):
                                   maxpages, password, rotation, encoding,)
         return chapter
     else:
-        file = create_file(args.input, outtype, debug, caching, outfile, laparams, imagewriter,
-                           stripcontrol, scale, layoutmode, pagenos,
-                           maxpages, password, rotation, encoding)
+        file = create_file(args.input, outtype, debug, caching, outfile,
+                           laparams, imagewriter, stripcontrol, scale,
+                           layoutmode, pagenos, maxpages, password,
+                           rotation, encoding)
         return file
 
 
