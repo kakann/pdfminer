@@ -30,6 +30,46 @@ from .utils import choplist
 from .utils import nunpack
 
 
+class _HelperLoadFunc:
+    # Helper class for the load function in CMapconverter. The class has several methods
+    # for putting or get data from sets. The class is used only by the load function
+    @staticmethod
+    def put(self, dmap, code, cid, force=False):
+        for b in code[:-1]:
+            if b in dmap:
+                dmap = dmap[b]
+            else:
+                d = {}
+                dmap[b] = d
+                dmap = d
+        b = code[-1]
+        if force or ((b not in dmap) or dmap[b] == cid):
+            dmap[b] = cid
+        return
+
+    def add(self, unimap, enc, code):
+        try:
+            codec = self.enc2codec[enc]
+            c = code.decode(codec, 'strict')
+            if len(c) == 1:
+                if c not in unimap:
+                    unimap[c] = 0
+                unimap[c] += 1
+        except KeyError:
+            pass
+        except UnicodeError:
+            pass
+        return
+
+    @staticmethod
+    def pick(self, unimap):
+        chars = sorted(
+            unimap.items(),
+            key=(lambda x: (x[1], -ord(x[0]))), reverse=True)
+        (c, _) = chars[0]
+        return c
+
+
 class CMapError(Exception):
     pass
 
@@ -466,40 +506,7 @@ class CMapConverter:
                 encs = values
                 continue
 
-            def put(dmap, code, cid, force=False):
-                for b in code[:-1]:
-                    if b in dmap:
-                        dmap = dmap[b]
-                    else:
-                        d = {}
-                        dmap[b] = d
-                        dmap = d
-                b = code[-1]
-                if force or ((b not in dmap) or dmap[b] == cid):
-                    dmap[b] = cid
-                return
-
-            def add(unimap, enc, code):
-                try:
-                    codec = self.enc2codec[enc]
-                    c = code.decode(codec, 'strict')
-                    if len(c) == 1:
-                        if c not in unimap:
-                            unimap[c] = 0
-                        unimap[c] += 1
-                except KeyError:
-                    pass
-                except UnicodeError:
-                    pass
-                return
-
-            def pick(unimap):
-                chars = sorted(
-                    unimap.items(),
-                    key=(lambda x: (x[1], -ord(x[0]))), reverse=True)
-                (c, _) = chars[0]
-                return c
-
+            help_func = _HelperLoadFunc
             cid = int(values[0])
             unimap_h = {}
             unimap_v = {}
@@ -512,6 +519,13 @@ class CMapConverter:
                 # hcodes, vcodes: encoded bytes for each writing mode.
                 hcodes = []
                 vcodes = []
+
+                # Helper function used for putting values in hmap and vmap
+                def helper_put(dmap, codes):
+                    for cur_code in codes:
+                        help_func.put(dmap, cur_code, True)
+                    return
+
                 for code in value.split(','):
                     vertical = code.endswith('v')
                     if vertical:
@@ -522,28 +536,26 @@ class CMapConverter:
                         code = bytes([int(code, 16)])
                     if vertical:
                         vcodes.append(code)
-                        add(unimap_v, enc, code)
+                        help_func.add(unimap_v, enc, code)
                     else:
                         hcodes.append(code)
-                        add(unimap_h, enc, code)
+                        help_func.add(unimap_h, enc, code)
                 # add cid to each map.
                 (hmap, vmap) = self.get_maps(enc)
                 if vcodes:
                     assert vmap is not None
-                    for code in vcodes:
-                        put(vmap, code, cid, True)
-                    for code in hcodes:
-                        put(hmap, code, cid, True)
+                    helper_put(vmap, vcodes)
+                    helper_put(hmap, hcodes)
                 else:
                     for code in hcodes:
-                        put(hmap, code, cid)
-                        put(vmap, code, cid)
+                        help_func.put(hmap, code, cid)
+                        help_func.put(vmap, code, cid)
 
             # Determine the "most popular" candidate.
             if unimap_h:
-                self.cid2unichr_h[cid] = pick(unimap_h)
+                self.cid2unichr_h[cid] = help_func.pick(unimap_h)
             if unimap_v or unimap_h:
-                self.cid2unichr_v[cid] = pick(unimap_v or unimap_h)
+                self.cid2unichr_v[cid] = help_func.pick(unimap_v or unimap_h)
 
         return
 
